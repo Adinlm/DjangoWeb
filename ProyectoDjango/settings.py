@@ -21,12 +21,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'n03(vq@@kf)rx!96r*h#mlk#bi=uc88krpy8cqldgwi23gzrqw'
+# Explicit local/deployment environment; no published default signing key.
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+if not SECRET_KEY:
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured('Set DJANGO_SECRET_KEY in the local/deployment environment.')
+DEBUG = os.environ.get('DJANGO_DEBUG', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get(
+    'DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1' if DEBUG else '').split(',') if h.strip()]
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -89,16 +93,11 @@ DATABASES = {
 }
 """
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'proyectodjango',
-        'USER': 'root',
-        'PASSWORD': '',
-        'HOST': 'localhost',
-        'PORT': 3306
-    }
-}
+# SQLite supports a clean local setup; an existing MySQL deployment can use the DB variables below.
+_db_engine = os.environ.get('DJANGO_DB_ENGINE', 'django.db.backends.sqlite3')
+DATABASES = {'default': {'ENGINE': _db_engine, 'NAME': os.environ.get('DJANGO_DB_NAME', str(BASE_DIR / 'db.sqlite3'))}}
+if _db_engine != 'django.db.backends.sqlite3':
+    DATABASES['default'].update(USER=os.environ.get('DJANGO_DB_USER', ''), PASSWORD=os.environ.get('DJANGO_DB_PASSWORD', ''), HOST=os.environ.get('DJANGO_DB_HOST', 'localhost'), PORT=os.environ.get('DJANGO_DB_PORT', ''))
 
 
 # Password validation
